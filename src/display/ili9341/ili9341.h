@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <pico/stdlib.h>
 
 typedef struct {
     void* data;
@@ -7,7 +8,7 @@ typedef struct {
 
 typedef struct {
     uint16_t width, height;
-    uint8_t scl_gpio, mosi_gpio, miso_gpio, dc_gpio, cs_gpio, reset_gpio, backlight_gpio;
+    uint scl_gpio, mosi_gpio, miso_gpio, dc_gpio, cs_gpio, reset_gpio, backlight_gpio;
 
     uint16_t spi_clk_khz;
 } ili9341_display_config;

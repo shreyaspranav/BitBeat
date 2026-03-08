@@ -9,7 +9,7 @@ int main()
 {
     stdio_init_all();
 
-    ili9341_display_config* disp_config = malloc(sizeof(ili9341_display_config));\
+    ili9341_display_config* disp_config = malloc(sizeof(ili9341_display_config));
     disp_config->width = DISPLAY_HOR_RES;
     disp_config->height = DISPLAY_VER_RES;
 
@@ -24,7 +24,7 @@ int main()
     disp_config->spi_clk_khz = 2000;
 
     ili9341_display* disp = create_display(disp_config);
-    set_backlight_brightness(disp, 0.5f);
+    set_backlight_brightness(disp, 1.0f);
 
     for(;;);
 }

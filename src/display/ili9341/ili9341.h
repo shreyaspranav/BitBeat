@@ -3,6 +3,7 @@
 #include <pico/stdlib.h>
 #include <lvgl.h>
 
+// Rewrite with PIO and some more optimizations to achieve 60+ FPS. Atleast, full screen scrolling must be reasonably smooth.
 typedef struct {
     void* data;
 } ili9341_display;

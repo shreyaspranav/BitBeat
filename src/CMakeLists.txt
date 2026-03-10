@@ -17,9 +17,14 @@ target_link_libraries(BitBeat
     # hardware_i2c
     hardware_dma
     hardware_pwm
+    lvgl
 )
 
 target_compile_definitions(BitBeat PUBLIC "$<$<CONFIG:Debug>:_DEBUG>")
+
+target_include_directories(BitBeat PUBLIC
+    "${CMAKE_SOURCE_DIR}/libs/lvgl/src"
+)
 
 pico_set_program_name(BitBeat "BitBeat")
 pico_set_program_version(BitBeat "0.1")

@@ -31,5 +31,9 @@ include(pico_sdk_import.cmake)
 project(BitBeat C CXX ASM)
 
 pico_sdk_init()
+
+set(LV_BUILD_CONF_PATH "src/lv_conf.h")
+add_subdirectory(libs/lvgl)
+
 add_subdirectory(src/)
 

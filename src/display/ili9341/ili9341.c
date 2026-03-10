@@ -94,7 +94,7 @@ ili9341_display* create_display(ili9341_display_config* config)
     __send_init_seq(display);
 
     // TEMP: send a sample image.
-    __test__(display);
+    // __test__(display);
 
     return (ili9341_display*)display;
 }
@@ -103,6 +103,33 @@ void set_backlight_brightness(ili9341_display* display, float brightness)
 {
     __ili9341_display* disp = (__ili9341_display*)display;
     pwm_set_gpio_level(disp->config->backlight_gpio, (uint16_t)(brightness * BACKLIGHT_PWM_WRAP));
+}
+
+void lvgl_lcd_flash_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* color_data)
+{
+    __ili9341_display* internal_disp = lv_display_get_driver_data(disp);
+
+    lv_draw_sw_rgb565_swap((void*)color_data, lv_area_get_width(area) * lv_area_get_height(area));
+
+    uint8_t caset_data[] = 
+    {
+        ILI9341_CASET,
+        area->x1 >> 8, area->x1 & 0xFF,
+        area->x2 >> 8, area->x2 & 0xFF,
+    };
+
+    uint8_t paset_data[] = 
+    {
+        ILI9341_PASET,
+        area->y1 >> 8, area->y1 & 0xFF,
+        area->y2 >> 8, area->y2 & 0xFF,
+    };
+
+    __write_spi_cmd_param_blocking(internal_disp, caset_data, 5);
+    __write_spi_cmd_param_blocking(internal_disp, paset_data, 5);
+
+    __write_spi_disp_data_dma(internal_disp, color_data, lv_area_get_width(area) * lv_area_get_height(area) * 2);
+    lv_display_flush_ready(disp);
 }
 
 // Private Functions: ------------------------------------------------------------------
@@ -139,7 +166,7 @@ void __send_init_seq(__ili9341_display* display)
         4,   0, ILI9341_PWCTRLB, 0x00, 0xA2, 0xF0,                      // Power control B
         2,   0, ILI9341_PWCTRL1, 0x21,                                  // Power control 1
         2,   0, ILI9341_PWCTRL2, 0x00,                                  // Power control 2
-        2,   0, ILI9341_PIXFMT,  0x66,                                  // Pixel format: 18 bit both on RGB and MCU interface
+        2,   0, ILI9341_PIXFMT,  0x55,                                  // Pixel format: 18 bit both on RGB and MCU interface
         2,   0, ILI9341_MADCTL,  0x48,
         
         // Frame rate & display function control
@@ -241,5 +268,5 @@ void __test__(__ili9341_display* display)
     __write_spi_cmd_param_blocking(display, caset_data, 5);
     __write_spi_cmd_param_blocking(display, paset_data, 5);
 
-    __write_spi_disp_data_dma(display, image_data_rgb666, 240 * 320 * 3);
+    __write_spi_disp_data_dma(display, image_data_rgb565, 240 * 320 * 2);
 }

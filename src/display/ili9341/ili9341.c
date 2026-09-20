@@ -1,6 +1,5 @@
 #include "ili9341.h"
 #include "ili9341_commands.h"
-#include "test_image.h"
 
 #include "pico/stdlib.h"
 #include "hardware/dma.h"
@@ -13,7 +12,6 @@
 // Internal Configuration: -------------------------------------------------------------
 const uint16_t BACKLIGHT_PWM_WRAP  = 25000;
 const float BACKLIGHT_CLOCK_DIV    = 1.0f;
-
 // -------------------------------------------------------------------------------------
 
 #define DC_COMMAND  false
@@ -24,20 +22,27 @@ typedef struct {
     dma_channel_config_t disp_spi_dma_channel_config;
     spi_inst_t* disp_spi_inst;
 
+    lv_display_t* lvgl_display;
+
     ili9341_display_config* config;
 } __ili9341_display;
 
+// Just hold ONE global display instance
+// as the product has only one display. 
+__ili9341_display *g_ili9341_display;
+
 // Declaration of private functions: ---------------------------------------------------
 spi_inst_t* __get_gpio_spi_inst(uint32_t gpio);
-void __send_init_seq(__ili9341_display* display);
 
-void __write_spi_cmd_param_blocking(__ili9341_display* display, uint8_t* buffer, size_t len);
-void __write_spi_disp_data_dma(__ili9341_display* display, const uint8_t* data, size_t length);
+void __send_init_seq();
 
-void __test__(__ili9341_display* display);
+void __write_spi_cmd_param_blocking(uint8_t* buffer, size_t len);
+void __write_spi_disp_data_dma(const uint8_t* data, size_t length);
+
+void __dma_irq_handler(void);
 
 // Public Functions: -------------------------------------------------------------------
-ili9341_display* create_display(ili9341_display_config* config)
+void create_display(ili9341_display_config* config)
 {
     __ili9341_display* display = malloc(sizeof(__ili9341_display));
 
@@ -47,7 +52,7 @@ ili9341_display* create_display(ili9341_display_config* config)
 #ifdef _DEBUG
         printf("get_gpio_spi_inst(config->scl_gpio) returned NULL");
 #endif
-        return NULL;
+        return;
     }
 
     // Setup the SPI bus for the display including the CS, RESET and the DC pin. 
@@ -86,30 +91,29 @@ ili9341_display* create_display(ili9341_display_config* config)
     display->disp_spi_dma_channel_config = dma_config;
     display->disp_spi_inst = spi_inst;
 
+    // DMA interrupt
+    dma_channel_set_irq0_enabled(display->disp_spi_dma_channel, true);
+    irq_set_exclusive_handler(DMA_IRQ_0, __dma_irq_handler);
+    irq_set_enabled(DMA_IRQ_0, true);
+
     gpio_put(config->reset_gpio, 0);
     sleep_ms(50);
     gpio_put(config->reset_gpio, 1);
     sleep_ms(150);
 
-    __send_init_seq(display);
-
-    // TEMP: send a sample image.
-    // __test__(display);
-
-    return (ili9341_display*)display;
+    g_ili9341_display = display;
+    __send_init_seq();
 }
 
-void set_backlight_brightness(ili9341_display* display, float brightness)
+void set_backlight_brightness(float brightness)
 {
-    __ili9341_display* disp = (__ili9341_display*)display;
-    pwm_set_gpio_level(disp->config->backlight_gpio, (uint16_t)(brightness * BACKLIGHT_PWM_WRAP));
+    pwm_set_gpio_level(g_ili9341_display->config->backlight_gpio, (uint16_t)(brightness * BACKLIGHT_PWM_WRAP));
 }
 
 void lvgl_lcd_flash_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* color_data)
 {
-    __ili9341_display* internal_disp = lv_display_get_driver_data(disp);
-
     lv_draw_sw_rgb565_swap((void*)color_data, lv_area_get_width(area) * lv_area_get_height(area));
+    g_ili9341_display->lvgl_display = disp;
 
     uint8_t caset_data[] = 
     {
@@ -125,11 +129,10 @@ void lvgl_lcd_flash_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* color
         area->y2 >> 8, area->y2 & 0xFF,
     };
 
-    __write_spi_cmd_param_blocking(internal_disp, caset_data, 5);
-    __write_spi_cmd_param_blocking(internal_disp, paset_data, 5);
+    __write_spi_cmd_param_blocking(caset_data, 5);
+    __write_spi_cmd_param_blocking(paset_data, 5);
 
-    __write_spi_disp_data_dma(internal_disp, color_data, lv_area_get_width(area) * lv_area_get_height(area) * 2);
-    lv_display_flush_ready(disp);
+    __write_spi_disp_data_dma(color_data, lv_area_get_width(area) * lv_area_get_height(area) * 2);
 }
 
 // Private Functions: ------------------------------------------------------------------
@@ -154,7 +157,7 @@ spi_inst_t* __get_gpio_spi_inst(uint32_t gpio)
     }
 }
 
-void __send_init_seq(__ili9341_display* display)
+void __send_init_seq()
 {
     // Format: <cmd length> <sleep in ms> <cmds>
     // Format: <total bytes including command> <sleep in ms> <cmd + args>
@@ -167,7 +170,7 @@ void __send_init_seq(__ili9341_display* display)
         2,   0, ILI9341_PWCTRL1, 0x21,                                  // Power control 1
         2,   0, ILI9341_PWCTRL2, 0x00,                                  // Power control 2
         2,   0, ILI9341_PIXFMT,  0x55,                                  // Pixel format: 18 bit both on RGB and MCU interface
-        2,   0, ILI9341_MADCTL,  0x48,
+        2,   0, ILI9341_MADCTL,  0x28,
         
         // Frame rate & display function control
         3,   0, ILI9341_FRMCTR1, 0x00, 0x18,   // Frame rate control (normal mode)
@@ -191,7 +194,7 @@ void __send_init_seq(__ili9341_display* display)
         uint8_t* delay_ptr = seq_ptr + (1 * sizeof(uint8_t));
         uint8_t* cmd_ptr   = seq_ptr + (2 * sizeof(uint8_t));
 
-        __write_spi_cmd_param_blocking(display, cmd_ptr, *count_ptr);
+        __write_spi_cmd_param_blocking(cmd_ptr, *count_ptr);
         sleep_ms((uint32_t)(*delay_ptr));
 
         seq_ptr += (2 + *count_ptr) * sizeof(uint8_t);
@@ -200,73 +203,59 @@ void __send_init_seq(__ili9341_display* display)
     printf("Init seq completed\n");
 }
 
-void __write_spi_cmd_param_blocking(__ili9341_display* display, uint8_t* data, size_t len)
+void __write_spi_cmd_param_blocking(uint8_t* data, size_t len)
 {
-    gpio_put(display->config->cs_gpio, false);
+    gpio_put(g_ili9341_display->config->cs_gpio, false);
 
     // First byte is a command
-    gpio_put(display->config->dc_gpio, DC_COMMAND);
-    spi_write_blocking(display->disp_spi_inst, data, 1 * sizeof(uint8_t));
+    gpio_put(g_ili9341_display->config->dc_gpio, DC_COMMAND);
+    spi_write_blocking(g_ili9341_display->disp_spi_inst, data, 1 * sizeof(uint8_t));
 
     // Next seqence of bytes are parameters, treat them as data
     if(len > 1)
     {
-        gpio_put(display->config->dc_gpio, DC_DATA);
-        spi_write_blocking(display->disp_spi_inst, data + 1, (len - 1) * sizeof(uint8_t));
+        gpio_put(g_ili9341_display->config->dc_gpio, DC_DATA);
+        spi_write_blocking(g_ili9341_display->disp_spi_inst, data + 1, (len - 1) * sizeof(uint8_t));
     }
-    gpio_put(display->config->cs_gpio, true);
+    gpio_put(g_ili9341_display->config->cs_gpio, true);
 
 }
 
-void __write_spi_disp_data_dma(__ili9341_display* display, const uint8_t* data, size_t length)
+void __write_spi_disp_data_dma(const uint8_t* data, size_t length)
 {
-    gpio_put(display->config->cs_gpio, false);
-    gpio_put(display->config->dc_gpio, DC_COMMAND);
+    gpio_put(g_ili9341_display->config->cs_gpio, false);
+    gpio_put(g_ili9341_display->config->dc_gpio, DC_COMMAND);
     uint8_t ramwr = ILI9341_RAMWR;
-    spi_write_blocking(display->disp_spi_inst, &ramwr, 1);
+    spi_write_blocking(g_ili9341_display->disp_spi_inst, &ramwr, 1);
 
-    gpio_put(display->config->dc_gpio, DC_DATA);
+    gpio_put(g_ili9341_display->config->dc_gpio, DC_DATA);
 
     dma_channel_configure(
-        display->disp_spi_dma_channel,
-        &display->disp_spi_dma_channel_config,
-        &spi_get_hw(display->disp_spi_inst)->dr,
+        g_ili9341_display->disp_spi_dma_channel,
+        &g_ili9341_display->disp_spi_dma_channel_config,
+        &spi_get_hw(g_ili9341_display->disp_spi_inst)->dr,
         (void*)data,
         (uint32_t)length,
         true
     );
-
-    dma_channel_wait_for_finish_blocking(display->disp_spi_dma_channel);
-    while (spi_get_hw(display->disp_spi_inst)->sr & SPI_SSPSR_BSY_BITS) { tight_loop_contents(); }
-
-    // deassert CS now that the transfer is complete
-    gpio_put(display->config->cs_gpio, true);
 }
 
-void __test__(__ili9341_display* display)
+void __dma_irq_handler(void)
 {
-    // Set row and column start and end to cover the entire screen
-    uint16_t start_column = 0;
-    uint16_t end_column   = display->config->width - 1;
-    uint16_t start_row    = 0;
-    uint16_t end_row      = display->config->height - 1;
-
-    uint8_t caset_data[] = 
+    uint32_t mask = 1u << g_ili9341_display->disp_spi_dma_channel;
+    
+    if (dma_hw->ints0 & mask)
     {
-        ILI9341_CASET,
-        start_column >> 8, start_column & 0xFF,
-        end_column   >> 8, end_column   & 0xFF,
-    };
+        // Acknowledge DMA interrupt
+        dma_hw->ints0 = mask;
 
-    uint8_t paset_data[] = 
-    {
-        ILI9341_PASET,
-        start_row >> 8, start_row & 0xFF,
-        end_row   >> 8, end_row   & 0xFF,
-    };
+        // DMA has finished feeding the SPI peripheral,
+        // but the last byte may still be shifting out.
+        while (spi_get_hw(g_ili9341_display->disp_spi_inst)->sr & SPI_SSPSR_BSY_BITS) tight_loop_contents();
 
-    __write_spi_cmd_param_blocking(display, caset_data, 5);
-    __write_spi_cmd_param_blocking(display, paset_data, 5);
-
-    __write_spi_disp_data_dma(display, image_data_rgb565, 240 * 320 * 2);
+        // Transfer is physically complete.
+        // Tell LVGL that the draw buffer is available again.
+        gpio_put(g_ili9341_display->config->cs_gpio, true);
+        lv_display_flush_ready(g_ili9341_display->lvgl_display);
+    }
 }

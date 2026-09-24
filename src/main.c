@@ -1,24 +1,23 @@
 #include <stdio.h>
-#include "pico/stdlib.h"
-#include "stdlib.h"
+#include <pico/stdlib.h>
+#include <pico/multicore.h>
+#include <hardware/clocks.h>
 
 #include "config.h"
 #include "display/ili9341/ili9341.h"
 #include "display/xpt2046/xpt2046.h"
-#include "hardware/clocks.h"
+
+#include <stdlib.h>
 
 #include <lvgl.h>
-#include "demos/lv_demos.h"
 
-int main()
+// Defined in ui/entry_point.c, runs in core0
+void lvgl_ui_entry_point();
+// Defined in audio/entry_point.c, runs in core1
+void audio_processing_thread_entry_point();
+
+void hardware_init()
 {
-    if (!set_sys_clock_khz(SYS_CLOCK, true)) {
-        return 0;
-    }
-    stdio_init_all();
-
-    sleep_ms(SLEEP_ON_STARTUP);
-
     ili9341_display_config* disp_config = malloc(sizeof(ili9341_display_config));
     disp_config->width = DISPLAY_HOR_RES;
     disp_config->height = DISPLAY_VER_RES;
@@ -48,7 +47,10 @@ int main()
     set_backlight_brightness(1.0f);
 
     touch_controller_create(touch_config);
+}
 
+void lvgl_init()
+{
     lv_init();
 
     lv_display_t* disp = lv_display_create(DISPLAY_HOR_RES, DISPLAY_VER_RES);
@@ -63,14 +65,27 @@ int main()
     lv_indev_t * indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(indev, lvgl_touch_read_cb);
+}
 
-    char* s[] = { "widgets" };
-    printf("%d", lv_demos_create(s, 1));
+int main()
+{
+    if (!set_sys_clock_khz(SYS_CLOCK, true)) {
+        return 0;
+    }
+    stdio_init_all();
 
+    sleep_ms(SLEEP_ON_STARTUP);
+
+    hardware_init();
+    lvgl_init();
+
+    // Launch the audio processing in a different core
+    multicore_launch_core1(audio_processing_thread_entry_point);
+
+    lvgl_ui_entry_point();
+
+    // Display update loop ------------------------------------------
     absolute_time_t last = get_absolute_time();
-
-    uint16_t x, y;
-
     while (true)
     {
         absolute_time_t now = get_absolute_time();
@@ -81,14 +96,7 @@ int main()
             lv_tick_inc(ms);
             last = delayed_by_us(last, ms * 1000);
         }
-
-        // sleep_ms(50);
-
-        if (touched()) 
-        {
-            read_xy(&x, &y, false, false, false);
-            printf("X: %d, Y: %d\n", x, y);
-        }
         lv_timer_handler();
     }
+    // --------------------------------------------------------------
 }

@@ -2,6 +2,11 @@
 set(SOURCES
     "display/ili9341/ili9341.c"
     "display/xpt2046/xpt2046.c"
+
+    "ui/entry_point.c"
+
+    "audio/entry_point.c"
+
     "main.c"
 )
 
@@ -14,10 +19,12 @@ target_include_directories(BitBeat PRIVATE
 # Add any user requested libraries
 target_link_libraries(BitBeat
     pico_stdlib
+    pico_multicore
+    
     hardware_spi
-    # hardware_i2c
     hardware_dma
     hardware_pwm
+
     lvgl
 )
 

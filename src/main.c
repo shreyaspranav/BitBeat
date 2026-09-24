@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "display/ili9341/ili9341.h"
+#include "display/xpt2046/xpt2046.h"
 #include "hardware/clocks.h"
 
 #include <lvgl.h>
@@ -19,37 +20,56 @@ int main()
     sleep_ms(SLEEP_ON_STARTUP);
 
     ili9341_display_config* disp_config = malloc(sizeof(ili9341_display_config));
-    disp_config->height = DISPLAY_HOR_RES;
-    disp_config->width = DISPLAY_VER_RES;
+    disp_config->width = DISPLAY_HOR_RES;
+    disp_config->height = DISPLAY_VER_RES;
 
     disp_config->backlight_gpio = DISPLAY_LED;
     disp_config->mosi_gpio = DISPLAY_MOSI;
     disp_config->reset_gpio = DISPLAY_RESET;
     disp_config->miso_gpio = DISPLAY_MISO;
-    disp_config->scl_gpio = DISPLAY_SCK;
+    disp_config->sck_gpio = DISPLAY_SCK;
     disp_config->dc_gpio = DISPLAY_DC;
     disp_config->cs_gpio = DISPLAY_CS;
 
     disp_config->spi_clk_khz = DISPLAY_SPI_CLOCK;
 
+    xpt2046_touch_config* touch_config = malloc(sizeof(xpt2046_touch_config));
+    touch_config->width = DISPLAY_HOR_RES;
+    touch_config->height = DISPLAY_VER_RES;
+
+    touch_config->mosi_gpio = TOUCH_MOSI;
+    touch_config->miso_gpio = TOUCH_MISO;
+    touch_config->sck_gpio = TOUCH_SCK;
+    touch_config->cs_gpio = TOUCH_CS;
+    touch_config->irq_gpio = TOUCH_IRQ;
+    touch_config->spi_clk_khz = TOUCH_SPI_CLOCK;
+
     create_display(disp_config);
     set_backlight_brightness(1.0f);
 
+    touch_controller_create(touch_config);
+
     lv_init();
 
-    lv_display_t* disp = lv_display_create(DISPLAY_VER_RES, DISPLAY_HOR_RES);
+    lv_display_t* disp = lv_display_create(DISPLAY_HOR_RES, DISPLAY_VER_RES);
     lv_display_set_flush_cb(disp, lvgl_lcd_flash_cb);
-    lv_draw_buf_t* buf1 = lv_draw_buf_create(DISPLAY_VER_RES, DISPLAY_HOR_RES / 4, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
-    lv_draw_buf_t* buf2 = lv_draw_buf_create(DISPLAY_VER_RES, DISPLAY_HOR_RES / 4, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
+    lv_draw_buf_t* buf1 = lv_draw_buf_create(DISPLAY_HOR_RES, DISPLAY_VER_RES / 4, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
+    lv_draw_buf_t* buf2 = lv_draw_buf_create(DISPLAY_HOR_RES, DISPLAY_VER_RES / 4, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
     lv_display_set_draw_buffers(disp, buf1, buf2);
     lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_obj_t* screen = lv_obj_create(NULL);
     lv_screen_load(screen);
 
-    char* s[] = { "music" };
+    lv_indev_t * indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, lvgl_touch_read_cb);
+
+    char* s[] = { "widgets" };
     printf("%d", lv_demos_create(s, 1));
 
     absolute_time_t last = get_absolute_time();
+
+    uint16_t x, y;
 
     while (true)
     {
@@ -62,6 +82,13 @@ int main()
             last = delayed_by_us(last, ms * 1000);
         }
 
+        // sleep_ms(50);
+
+        if (touched()) 
+        {
+            read_xy(&x, &y, false, false, false);
+            printf("X: %d, Y: %d\n", x, y);
+        }
         lv_timer_handler();
     }
 }

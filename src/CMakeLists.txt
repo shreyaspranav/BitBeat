@@ -1,6 +1,7 @@
 # Specify the list of sources here:
 set(SOURCES
     "display/ili9341/ili9341.c"
+    "display/xpt2046/xpt2046.c"
     "main.c"
 )
 

@@ -71,7 +71,7 @@
 
 #if LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN
     /** Size of memory available for `lv_malloc()` in bytes (>= 2kB) */
-    #define LV_MEM_SIZE (128 * 1024U)          /**< [bytes] */
+    #define LV_MEM_SIZE (200 * 1024U)          /**< [bytes] */
 
     /** Size of the memory expand for `lv_malloc()` in bytes */
     #define LV_MEM_POOL_EXPAND_SIZE 0
@@ -1465,7 +1465,7 @@
 
 #if LV_BUILD_DEMOS
     /** Show some widgets. This might be required to increase `LV_MEM_SIZE`. */
-    #define LV_USE_DEMO_WIDGETS 0
+    #define LV_USE_DEMO_WIDGETS 1
 
     /** Demonstrate usage of encoder and keyboard. */
     #define LV_USE_DEMO_KEYPAD_AND_ENCODER 0
@@ -1492,7 +1492,7 @@
         #define LV_DEMO_MUSIC_LANDSCAPE 1
         #define LV_DEMO_MUSIC_ROUND     0
         #define LV_DEMO_MUSIC_LARGE     0
-        #define LV_DEMO_MUSIC_AUTO_PLAY 1
+        #define LV_DEMO_MUSIC_AUTO_PLAY 0
     #endif
 
     /** Vector graphic demo */

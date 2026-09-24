@@ -45,8 +45,8 @@ void __dma_irq_handler(void);
 void create_display(ili9341_display_config* config)
 {
     __ili9341_display* display = malloc(sizeof(__ili9341_display));
-
-    spi_inst_t* spi_inst = __get_gpio_spi_inst(config->scl_gpio);
+    // TODO: We are cooked if the SCL GPIO corresponds to spi0 and other (MOSI, MISO) corresponds to spi1
+    spi_inst_t* spi_inst = __get_gpio_spi_inst(config->sck_gpio);
     if(!spi_inst)
     {
 #ifdef _DEBUG
@@ -64,9 +64,11 @@ void create_display(ili9341_display_config* config)
     gpio_put_masked(cs_dc_reset_gpio_mask, cs_dc_reset_gpio_mask);   // All the pins are active low signals.
     gpio_set_function_masked(cs_dc_reset_gpio_mask, GPIO_FUNC_SIO);
 
+    gpio_pull_up(config->cs_gpio); // Pull up CS for safety.
+
     spi_init(spi_inst, config->spi_clk_khz * 1000);
-    uint32_t scl_mosi_miso_gpio_mask = 0u | (1u << config->scl_gpio) | (1u << config->mosi_gpio) | (1u << config->miso_gpio);
-    gpio_set_function_masked(scl_mosi_miso_gpio_mask, GPIO_FUNC_SPI);
+    uint32_t sck_mosi_miso_gpio_mask = 0u | (1u << config->sck_gpio) | (1u << config->mosi_gpio) | (1u << config->miso_gpio);
+    gpio_set_function_masked(sck_mosi_miso_gpio_mask, GPIO_FUNC_SPI);
     spi_set_format(spi_inst, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
 
     // Setup DMA from the memory to the SPI peripheral.
@@ -170,7 +172,7 @@ void __send_init_seq()
         2,   0, ILI9341_PWCTRL1, 0x21,                                  // Power control 1
         2,   0, ILI9341_PWCTRL2, 0x00,                                  // Power control 2
         2,   0, ILI9341_PIXFMT,  0x55,                                  // Pixel format: 18 bit both on RGB and MCU interface
-        2,   0, ILI9341_MADCTL,  0x28,
+        2,   0, ILI9341_MADCTL,  0x48,
         
         // Frame rate & display function control
         3,   0, ILI9341_FRMCTR1, 0x00, 0x18,   // Frame rate control (normal mode)

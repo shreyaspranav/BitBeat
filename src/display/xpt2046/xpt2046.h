@@ -9,6 +9,8 @@ typedef struct {
     uint sck_gpio, mosi_gpio, miso_gpio, cs_gpio, irq_gpio;
 
     uint32_t spi_clk_khz;
+
+    uint8_t touch_samples;
 } xpt2046_touch_config;
 
 void touch_controller_create(xpt2046_touch_config* config);

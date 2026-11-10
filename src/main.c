@@ -42,6 +42,7 @@ void hardware_init()
     touch_config->cs_gpio = TOUCH_CS;
     touch_config->irq_gpio = TOUCH_IRQ;
     touch_config->spi_clk_khz = TOUCH_SPI_CLOCK;
+    touch_config->touch_samples = TOUCH_SAMPLES;
 
     create_display(disp_config);
     set_backlight_brightness(1.0f);

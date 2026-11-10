@@ -113,11 +113,20 @@ void lvgl_touch_read_cb(lv_indev_t* indev, lv_indev_data_t* data)
     bool flip_x = true, flip_y = false, rotate = false;
     if (touched())
     {
-        uint16_t x, y;
-        read_xy(&x, &y, flip_x, flip_y, rotate);
+        uint8_t samples = g_xpt2046_touch_controller->config->touch_samples;
+        uint16_t x_avg = 0, y_avg = 0;
 
-        data->point.x = x;
-        data->point.y = y;
+        for (uint i = 0; i < samples; ++i)
+        {
+            uint16_t x, y;
+            read_xy(&x, &y, flip_x, flip_y, rotate);
+
+            x_avg += (uint16_t)(x / samples);
+            y_avg += (uint16_t)(y / samples);
+        }
+        
+        data->point.x = x_avg;
+        data->point.y = y_avg;
         data->state = LV_INDEV_STATE_PRESSED;
     }
     else

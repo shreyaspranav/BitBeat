@@ -5,7 +5,7 @@
 // Clocks (in kHz)
 #define SYS_CLOCK          250000  // Overclocked to 250 Mhz :P
 #define PERI_CLOCK         125000
-#define DISPLAY_SPI_CLOCK  62500   // 120 MHz
+#define DISPLAY_SPI_CLOCK  62500   // 62.5 MHz
 #define TOUCH_SPI_CLOCK    1000    // 1 MHz 
 
 // Sleep on startup, useful to connect to usb serial monitor before actual code starts executing.
@@ -29,3 +29,4 @@
 #define TOUCH_MISO      16
 #define TOUCH_CS        17
 #define TOUCH_IRQ       20
+#define TOUCH_SAMPLES   3

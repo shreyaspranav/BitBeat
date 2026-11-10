@@ -1,27 +1,59 @@
 #include <lvgl.h>
-
-static void btn_event_cb(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * btn = lv_event_get_target_obj(e);
-    if(code == LV_EVENT_CLICKED) {
-        static uint8_t cnt = 0;
-        cnt++;
-
-        /*Get the first child of the button which is the label and change its text*/
-        lv_obj_t * label = lv_obj_get_child(btn, 0);
-        lv_label_set_text_fmt(label, "Button: %d", cnt);
-    }
-}
+#include "nurture.h"
 
 void lvgl_ui_entry_point()
 {
-    lv_obj_t * btn = lv_button_create(lv_screen_active());     /*Add a button the current screen*/
-    lv_obj_set_pos(btn, 10, 10);                            /*Set its position*/
-    lv_obj_set_size(btn, 120, 50);                          /*Set its size*/
-    lv_obj_add_event_cb(btn, btn_event_cb, LV_EVENT_ALL, NULL);           /*Assign a callback to the button*/
+    const uint16_t screen_padding = 10;
+    lv_obj_t* screen = lv_screen_active();
+    lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(screen, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_left(screen, screen_padding, 0);
+    lv_obj_set_style_pad_right(screen, screen_padding, 0);
+    lv_obj_set_style_pad_top(screen, screen_padding, 0);
+    lv_obj_set_style_pad_bottom(screen, screen_padding, 0);
 
-    lv_obj_t * label = lv_label_create(btn);          /*Add a label to the button*/
-    lv_label_set_text(label, "Button");                     /*Set the labels text*/
-    lv_obj_center(label);
+    const uint16_t album_cover_size = 220;
+    lv_obj_t* album_cover = lv_image_create(screen);
+    lv_image_set_src(album_cover, &nurture);
+    lv_obj_set_size(album_cover, album_cover_size, album_cover_size);
+    lv_image_set_inner_align(album_cover, LV_IMAGE_ALIGN_CENTER);
+
+    lv_obj_t* song_name_text = lv_label_create(screen);
+    lv_label_set_text(song_name_text, "Look At The Sky");
+    lv_label_set_long_mode(song_name_text, LV_LABEL_LONG_MODE_SCROLL_CIRCULAR);
+    lv_obj_set_style_text_align(song_name_text, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_size(song_name_text, album_cover_size, 20);
+
+    lv_obj_t* play_next_previous_container = lv_obj_create(screen);
+    lv_obj_set_size(play_next_previous_container, album_cover_size, 40);
+    lv_obj_set_style_bg_opa(play_next_previous_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(play_next_previous_container, 0, 0);
+    lv_obj_set_style_pad_all(play_next_previous_container, 0, 0);
+    lv_obj_set_scrollbar_mode(play_next_previous_container, LV_SCROLLBAR_MODE_OFF);
+
+    lv_obj_set_flex_flow(play_next_previous_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(play_next_previous_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_left(play_next_previous_container, screen_padding, 0);
+    lv_obj_set_style_pad_right(play_next_previous_container, screen_padding, 0);
+
+    lv_obj_t* previous = lv_button_create(play_next_previous_container);
+    lv_obj_t* play_pause = lv_button_create(play_next_previous_container);
+    lv_obj_t* next = lv_button_create(play_next_previous_container);
+
+    lv_obj_t* previous_icon = lv_label_create(previous);
+    lv_label_set_text(previous_icon, LV_SYMBOL_PREV);
+    lv_obj_set_flex_align(previous_icon, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* play_pause_icon = lv_label_create(play_pause);
+    lv_label_set_text(play_pause_icon, LV_SYMBOL_PLAY);
+    lv_obj_set_flex_align(play_pause_icon, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t* next_icon = lv_label_create(next);
+    lv_label_set_text(next_icon, LV_SYMBOL_NEXT);
+    lv_obj_set_flex_align(next_icon, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    /* Set their sizes */
+    lv_obj_set_size(previous, 40, 40);
+    lv_obj_set_size(play_pause, 40, 40);
+    lv_obj_set_size(next, 40, 40);
 }

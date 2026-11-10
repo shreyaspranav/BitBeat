@@ -3,8 +3,9 @@
 // The project's config as a whole --------------------------
 
 // Clocks (in kHz)
-#define SYS_CLOCK          266000  // Overclocked to 266 Mhz :P
-#define DISPLAY_SPI_CLOCK  120000  // 120 MHz
+#define SYS_CLOCK          250000  // Overclocked to 250 Mhz :P
+#define PERI_CLOCK         125000
+#define DISPLAY_SPI_CLOCK  62500   // 120 MHz
 #define TOUCH_SPI_CLOCK    1000    // 1 MHz 
 
 // Sleep on startup, useful to connect to usb serial monitor before actual code starts executing.

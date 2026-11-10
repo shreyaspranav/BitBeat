@@ -9,7 +9,7 @@
 
 #include <stdlib.h>
 
-#include <lvgl.h>
+#include <demos/lv_demos.h>
 
 // Defined in ui/entry_point.c, runs in core0
 void lvgl_ui_entry_point();
@@ -55,8 +55,8 @@ void lvgl_init()
 
     lv_display_t* disp = lv_display_create(DISPLAY_HOR_RES, DISPLAY_VER_RES);
     lv_display_set_flush_cb(disp, lvgl_lcd_flash_cb);
-    lv_draw_buf_t* buf1 = lv_draw_buf_create(DISPLAY_HOR_RES, DISPLAY_VER_RES / 4, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
-    lv_draw_buf_t* buf2 = lv_draw_buf_create(DISPLAY_HOR_RES, DISPLAY_VER_RES / 4, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
+    lv_draw_buf_t* buf1 = lv_draw_buf_create(DISPLAY_HOR_RES, DISPLAY_VER_RES / 2, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
+    lv_draw_buf_t* buf2 = lv_draw_buf_create(DISPLAY_HOR_RES, DISPLAY_VER_RES / 2, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
     lv_display_set_draw_buffers(disp, buf1, buf2);
     lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_obj_t* screen = lv_obj_create(NULL);
@@ -69,12 +69,17 @@ void lvgl_init()
 
 int main()
 {
-    if (!set_sys_clock_khz(SYS_CLOCK, true)) {
+    // Do not proceed if we fail to set clocks.
+    if (!set_sys_clock_khz(SYS_CLOCK, true))
         return 0;
-    }
+    if (!clock_configure(clk_peri, 0, CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS, clock_get_hz(clk_sys), PERI_CLOCK * 1000))
+        return 0;
+        
     stdio_init_all();
-
     sleep_ms(SLEEP_ON_STARTUP);
+
+    printf("clk_sys  = %lu Hz\n", clock_get_hz(clk_sys));
+    printf("clk_peri = %lu Hz\n", clock_get_hz(clk_peri));
 
     hardware_init();
     lvgl_init();
@@ -83,6 +88,8 @@ int main()
     multicore_launch_core1(audio_processing_thread_entry_point);
 
     lvgl_ui_entry_point();
+    // char* s[] = { "music" };
+    // printf("%d", lv_demos_create(s, 1));
 
     // Display update loop ------------------------------------------
     absolute_time_t last = get_absolute_time();

@@ -110,7 +110,7 @@ void read_xy(uint16_t* x, uint16_t* y, bool flip_x, bool flip_y, bool rotate)
 
 void lvgl_touch_read_cb(lv_indev_t* indev, lv_indev_data_t* data)
 {
-    bool flip_x = false, flip_y = true, rotate = false;
+    bool flip_x = true, flip_y = false, rotate = false;
     if (touched())
     {
         uint16_t x, y;

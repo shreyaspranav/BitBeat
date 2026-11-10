@@ -66,7 +66,8 @@ void create_display(ili9341_display_config* config)
 
     gpio_pull_up(config->cs_gpio); // Pull up CS for safety.
 
-    spi_init(spi_inst, config->spi_clk_khz * 1000);
+    uint baud = spi_init(spi_inst, config->spi_clk_khz * 1000);
+    printf("This is the baudrate set for the display controller: %d", baud);
     uint32_t sck_mosi_miso_gpio_mask = 0u | (1u << config->sck_gpio) | (1u << config->mosi_gpio) | (1u << config->miso_gpio);
     gpio_set_function_masked(sck_mosi_miso_gpio_mask, GPIO_FUNC_SPI);
     spi_set_format(spi_inst, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
@@ -172,7 +173,7 @@ void __send_init_seq()
         2,   0, ILI9341_PWCTRL1, 0x21,                                  // Power control 1
         2,   0, ILI9341_PWCTRL2, 0x00,                                  // Power control 2
         2,   0, ILI9341_PIXFMT,  0x55,                                  // Pixel format: 18 bit both on RGB and MCU interface
-        2,   0, ILI9341_MADCTL,  0x48,
+        2,   0, ILI9341_MADCTL,  0x88,
         
         // Frame rate & display function control
         3,   0, ILI9341_FRMCTR1, 0x00, 0x18,   // Frame rate control (normal mode)

@@ -11,6 +11,12 @@
 // Sleep on startup, useful to connect to usb serial monitor before actual code starts executing.
 #define SLEEP_ON_STARTUP 0  // In ms
 
+// Screen orientation
+// Do not mess with screen widths and heights to to change the orientation.
+// TODO: Implement this
+#define DISPLAY_LANDSCAPE  0 // 0: Portrait, 1: Landscape
+#define DISPLAY_FLIP       0 // 1: Flip 180 degrees
+
 // Display config: 
 #define DISPLAY_HOR_RES 240
 #define DISPLAY_VER_RES 320
